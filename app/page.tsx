@@ -1,65 +1,198 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Header } from "@/components/Header";
+import { CampaignSnapshotForm } from "@/components/CampaignSnapshotForm";
+import { ResultsPanel } from "@/components/ResultsPanel";
+import { SettingsButton } from "@/components/SettingsButton";
+import { ToastContainer, type ToastMessage } from "@/components/Toast";
+import type {
+  CampaignSnapshot,
+  ComputedFields,
+  AnalysisResult,
+  HistoryItem,
+  AnalyzeResponse,
+} from "@/lib/schema";
+import { loadHistory, saveToHistory, generateId } from "@/lib/utils";
+
+export default function Page() {
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [currentSnapshot, setCurrentSnapshot] = useState<CampaignSnapshot | null>(null);
+  const [currentComputed, setCurrentComputed] = useState<ComputedFields | null>(null);
+  const [pendingSnapshot, setPendingSnapshot] = useState<CampaignSnapshot | null>(null);
+  const [pendingComputed, setPendingComputed] = useState<ComputedFields | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [simulationMode, setSimulationMode] = useState(false);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [experimentIds, setExperimentIds] = useState<Array<{ name: string; id: string }>>([]);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const toastCounter = useRef(0);
+
+  useEffect(() => {
+    setHistory(loadHistory());
+  }, []);
+
+  function addToast(type: ToastMessage["type"], message: string) {
+    const id = ++toastCounter.current;
+    setToasts((prev) => [...prev, { id, type, message }]);
+  }
+
+  function dismissToast(id: number) {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }
+
+  function handleToggleSimulation() {
+    const next = !simulationMode;
+    setSimulationMode(next);
+    if (next) {
+      addToast("sim", "Simulation Mode enabled – Using demo scenarios");
+    } else {
+      addToast("live", "Live Mode enabled – Real campaign inputs only");
+    }
+  }
+
+  const runAnalysis = useCallback(
+    async (snapshot: CampaignSnapshot, computed: ComputedFields) => {
+      setIsLoading(true);
+      setError(null);
+      setResult(null);
+      setRunId(null);
+      setExperimentIds([]);
+      setPendingSnapshot(snapshot);
+      setPendingComputed(computed);
+
+      try {
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ snapshot, computed, simulationMode }),
+        });
+
+        const data: AnalyzeResponse & { error?: string } = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || `Server error: ${res.status}`);
+        }
+
+        setResult(data.result);
+        setCurrentSnapshot(snapshot);
+        setCurrentComputed(computed);
+        setRunId(data.runId ?? null);
+        setExperimentIds(data.experimentIds ?? []);
+
+        // Only save real runs to localStorage history
+        if (!simulationMode) {
+          const historyItem: HistoryItem = {
+            id: data.runId ?? generateId(),
+            timestamp: new Date().toISOString(),
+            snapshot,
+            computed,
+            result: data.result,
+          };
+          saveToHistory(historyItem);
+          setHistory(loadHistory());
+        }
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [simulationMode]
+  );
+
+  function handleRetry() {
+    if (pendingSnapshot && pendingComputed) {
+      runAnalysis(pendingSnapshot, pendingComputed);
+    }
+  }
+
+  function handleLoadHistory(item: HistoryItem) {
+    setResult(item.result);
+    setCurrentSnapshot(item.snapshot);
+    setCurrentComputed(item.computed);
+    setRunId(item.id);
+    setExperimentIds([]);
+    setError(null);
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div style={{ minHeight: "100vh", position: "relative", zIndex: 1 }}>
+      <Header
+        result={result}
+        snapshot={currentSnapshot}
+        computed={currentComputed}
+        simulationMode={simulationMode}
+        onToggleSimulation={handleToggleSimulation}
+        history={history}
+        onLoadHistory={handleLoadHistory}
+      />
+
+      <main style={{ maxWidth: "1400px", margin: "0 auto", padding: "1.5rem" }}>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "minmax(360px, 420px) 1fr", gap: "1.25rem", alignItems: "start" }}
+          className="layout-grid"
+        >
+          {/* Left: Form */}
+          <div
+            className="glass-card-elevated"
+            style={{
+              position: "sticky",
+              top: "72px",
+              height: "calc(100vh - 90px)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "clip",
+              borderColor: simulationMode ? "rgba(245,158,11,0.15)" : undefined,
+              transition: "border-color 0.3s",
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+            <CampaignSnapshotForm
+              onAnalyze={runAnalysis}
+              isLoading={isLoading}
+              simulationMode={simulationMode}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+
+          {/* Right: Results */}
+          <div
+            className="glass-card-elevated"
+            style={{ minHeight: "calc(100vh - 90px)", display: "flex", flexDirection: "column", overflow: "clip" }}
           >
-            Documentation
-          </a>
+            <ResultsPanel
+              result={result}
+              snapshot={currentSnapshot}
+              computed={currentComputed}
+              isLoading={isLoading}
+              error={error}
+              onRetry={handleRetry}
+              runId={runId}
+              experimentIds={experimentIds}
+            />
+          </div>
         </div>
       </main>
+
+      <SettingsButton />
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      <style>{`
+        @media (max-width: 900px) {
+          .layout-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .layout-grid > div:first-child {
+            position: static !important;
+            height: auto !important;
+          }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   );
 }

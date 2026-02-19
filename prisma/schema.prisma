@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AnalysisRun {
+  id                String       @id @default(uuid())
+  createdAt         DateTime     @default(now())
+  brand             String
+  industry          String
+  window            String
+  channelMix        String       // JSON: { meta, google, tiktok }
+  metrics           String       // JSON: full metrics object
+  trends            String       // JSON: { roasDelta, ctrDelta, cvrDelta }
+  notes             String       @default("")
+  aiOutput          String       // JSON: full AnalysisResult
+  primaryBottleneck String
+  confidence        Float
+  riskScore         Int          @default(0)
+  tags              String       @default("[]") // JSON string[]
+  experiments       Experiment[]
+}
+
+model Experiment {
+  id             String              @id @default(uuid())
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  brand          String
+  industry       String
+  bottleneckType String
+  name           String
+  hypothesis     String
+  setup          String
+  successMetrics String              @default("[]") // JSON string[]
+  guardrails     String              @default("[]") // JSON string[]
+  linkedRunId    String
+  status         String              @default("Proposed") // Proposed|Running|Completed|Archived
+  linkedRun      AnalysisRun         @relation(fields: [linkedRunId], references: [id])
+  outcomes       ExperimentOutcome[]
+}
+
+model ExperimentOutcome {
+  id              String     @id @default(uuid())
+  createdAt       DateTime   @default(now())
+  experimentId    String
+  outcomeStatus   String     // Win|Loss|Neutral|Inconclusive
+  notes           String     @default("")
+  metricsDelta    String     @default("{}") // JSON: { roas, cac, ctr, cvr }
+  learnings       String     @default("[]") // JSON string[]
+  recommendedNext String     @default("[]") // JSON string[]
+  experiment      Experiment @relation(fields: [experimentId], references: [id])
+}
