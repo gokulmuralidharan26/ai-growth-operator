@@ -120,7 +120,7 @@ export function ResultsPanel({
             </h2>
             {result && (
               <span style={{ padding: "0.125rem 0.5rem", borderRadius: "9999px", background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)", fontSize: "0.625rem", fontWeight: 700, color: "#34d399", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                Ready
+                Structured Analysis Generated
               </span>
             )}
           </div>
@@ -142,10 +142,11 @@ export function ResultsPanel({
               <button
                 className="btn-ghost"
                 onClick={() => setShowMemo(true)}
-                style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: "#a78bfa", borderColor: "rgba(139,92,246,0.25)" }}
+                style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: "var(--fg3)", borderColor: "var(--border-2)" }}
+                title="Export structured memo"
               >
                 <FileText size={12} />
-                Client Memo
+                Memo
               </button>
             </div>
           )}
@@ -189,8 +190,8 @@ export function ResultsPanel({
 
         {result && !isLoading && (
           <div className="fade-in-up" key={activeTab}>
-            {activeTab === "diagnosis" && <DiagnosisTab result={result} />}
-            {activeTab === "actionPlan" && <ActionPlanTab result={result} />}
+            {activeTab === "diagnosis" && <DiagnosisTab result={result} snapshot={snapshot} computed={computed} />}
+            {activeTab === "actionPlan" && <ActionPlanTab result={result} snapshot={snapshot} computed={computed} />}
             {activeTab === "experiments" && (
               <ExperimentsTab
                 result={result}
@@ -234,16 +235,11 @@ function EmptyState() {
       </div>
       <div>
         <p style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--fg2)", margin: "0 0 0.375rem" }}>
-          Enter a snapshot and click Analyze
+          Enter metrics to generate structured diagnosis
         </p>
         <p style={{ fontSize: "0.8125rem", color: "var(--fg3)", margin: 0 }}>
-          Fill in your campaign metrics to get a full AI-powered diagnosis, action plan, experiments, and creative directions.
+          Input campaign performance data to generate a structured bottleneck classification, action plan, and experiment framework.
         </p>
-      </div>
-      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", padding: "0.5rem 0.875rem", background: "rgba(139,92,246,0.06)", borderRadius: "8px", border: "1px solid rgba(139,92,246,0.12)" }}>
-        <span style={{ fontSize: "0.75rem", color: "var(--fg3)" }}>
-          Tip: Try a preset scenario using <strong style={{ color: "var(--fg2)" }}>Load Scenario</strong>
-        </span>
       </div>
     </div>
   );
@@ -270,14 +266,31 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
 
 // ─── Diagnosis tab ────────────────────────────────────────────────────────────
 
-function DiagnosisTab({ result }: { result: AnalysisResult }) {
+function DiagnosisTab({ result, snapshot, computed }: { result: AnalysisResult; snapshot: CampaignSnapshot | null; computed: ComputedFields | null }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       {/* Summary */}
       <div style={{ padding: "1rem 1.125rem", background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)", borderRadius: "12px" }}>
         <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "#8b5cf6", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 0.5rem" }}>Summary</p>
         <p style={{ fontSize: "0.9375rem", color: "var(--fg1)", margin: 0, lineHeight: 1.65, fontWeight: 500 }}>{result.summary.oneLiner}</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid rgba(139,92,246,0.12)" }}>
+          <span style={{ fontSize: "0.6875rem", color: "var(--fg3)", fontWeight: 500 }}>
+            Confidence:
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+            <div style={{ width: "72px", height: "4px", background: "var(--surface-d)", borderRadius: "9999px", overflow: "hidden" }}>
+              <div style={{ width: `${result.confidence * 100}%`, height: "100%", background: "linear-gradient(90deg, #7c3aed, #a78bfa)", borderRadius: "9999px", transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)" }} />
+            </div>
+            <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#a78bfa" }}>{Math.round(result.confidence * 100)}%</span>
+          </div>
+          <span style={{ fontSize: "0.6875rem", color: "var(--fg4)", fontStyle: "italic" }} title="Confidence reflects strength and alignment of metric signals.">
+            Reflects strength and alignment of metric signals
+          </span>
+        </div>
       </div>
+
+      {/* Signal Strength */}
+      {snapshot && computed && <SignalStrength snapshot={snapshot} computed={computed} />}
 
       {/* Bottlenecks */}
       <div>
@@ -343,6 +356,12 @@ function DiagnosisTab({ result }: { result: AnalysisResult }) {
 
       {/* Insight Timeline */}
       <div style={{ background: "var(--surface-b)", border: "1px solid var(--border-2)", borderRadius: "12px", padding: "1.125rem" }}>
+        <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--fg3)", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 0.2rem" }}>
+          Insight Timeline
+        </p>
+        <p style={{ fontSize: "0.6875rem", color: "var(--fg4)", margin: "0 0 0.875rem" }}>
+          Pattern classification across selected window
+        </p>
         <InsightTimeline result={result} />
       </div>
     </div>
@@ -351,7 +370,7 @@ function DiagnosisTab({ result }: { result: AnalysisResult }) {
 
 // ─── Action Plan tab ──────────────────────────────────────────────────────────
 
-function ActionPlanTab({ result }: { result: AnalysisResult }) {
+function ActionPlanTab({ result, snapshot, computed }: { result: AnalysisResult; snapshot: CampaignSnapshot | null; computed: ComputedFields | null }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
       {result.actionPlan.map((item, i) => (
@@ -374,6 +393,9 @@ function ActionPlanTab({ result }: { result: AnalysisResult }) {
           </div>
         </div>
       ))}
+      {snapshot && computed && (
+        <ImpactProjection result={result} snapshot={snapshot} computed={computed} />
+      )}
     </div>
   );
 }
@@ -579,4 +601,168 @@ function hexToRgb(hex: string, alpha: number): string {
   const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!r) return `rgba(139,92,246,${alpha})`;
   return `rgba(${parseInt(r[1], 16)},${parseInt(r[2], 16)},${parseInt(r[3], 16)},${alpha})`;
+}
+
+// ─── Signal Strength ──────────────────────────────────────────────────────────
+
+type SignalLevel = "strong" | "moderate" | "weak";
+
+const SIGNAL_CONFIG: Record<SignalLevel, { color: string; bg: string; border: string; label: string }> = {
+  strong:   { color: "#34d399", bg: "rgba(52,211,153,0.1)",  border: "rgba(52,211,153,0.22)",  label: "Strong"   },
+  moderate: { color: "#f59e0b", bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.22)",  label: "Moderate" },
+  weak:     { color: "#94a3b8", bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)",  label: "Weak"     },
+};
+
+function computeSignalLevels(snapshot: CampaignSnapshot, computed: ComputedFields): Array<{ label: string; detail: string; level: SignalLevel }> {
+  const { metrics, trends } = snapshot;
+
+  const trendStr = (v: number | null, unit = "%") =>
+    v !== null ? ` (${v > 0 ? "+" : ""}${v}${unit} vs prior)` : "";
+
+  const ctrLevel: SignalLevel =
+    metrics.ctr >= 1.5 && (trends.ctrDelta === null || trends.ctrDelta >= -5) ? "strong"
+    : metrics.ctr >= 1.0 || (trends.ctrDelta !== null && trends.ctrDelta >= -15) ? "moderate"
+    : "weak";
+
+  const cvrLevel: SignalLevel =
+    metrics.conversionRate >= 2.0 && (trends.cvrDelta === null || trends.cvrDelta >= -5) ? "strong"
+    : metrics.conversionRate >= 1.2 || (trends.cvrDelta !== null && trends.cvrDelta >= -15) ? "moderate"
+    : "weak";
+
+  const cpmLevel: SignalLevel =
+    metrics.cpm > 0 && metrics.cpm <= 25 ? "strong"
+    : metrics.cpm <= 45 ? "moderate"
+    : "weak";
+
+  const roasLevel: SignalLevel =
+    computed.roas >= 2.5 && (trends.roasDelta === null || trends.roasDelta >= -5) ? "strong"
+    : computed.roas >= 1.5 || (trends.roasDelta !== null && trends.roasDelta >= -15) ? "moderate"
+    : "weak";
+
+  return [
+    { label: "CTR Signal",       detail: `${metrics.ctr}%${trendStr(trends.ctrDelta)}`,                     level: ctrLevel  },
+    { label: "CVR Stability",    detail: `${metrics.conversionRate}%${trendStr(trends.cvrDelta)}`,           level: cvrLevel  },
+    { label: "CPM Efficiency",   detail: `$${metrics.cpm}${metrics.cpm === 0 ? "" : " per 1k impressions"}`, level: cpmLevel  },
+    { label: "ROAS Signal",      detail: `${computed.roas.toFixed(2)}x${trendStr(trends.roasDelta)}`,         level: roasLevel },
+  ];
+}
+
+function SignalStrength({ snapshot, computed }: { snapshot: CampaignSnapshot; computed: ComputedFields }) {
+  const signals = computeSignalLevels(snapshot, computed);
+
+  return (
+    <div>
+      <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--fg3)", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 0.75rem" }}>
+        Signal Strength
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+        {signals.map((sig) => {
+          const c = SIGNAL_CONFIG[sig.level];
+          return (
+            <div
+              key={sig.label}
+              style={{
+                padding: "0.625rem 0.75rem",
+                background: "var(--surface-b)",
+                border: "1px solid var(--border-2)",
+                borderRadius: "10px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.3rem",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+                <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--fg2)" }}>{sig.label}</span>
+                <span style={{ padding: "0.1rem 0.4rem", borderRadius: "9999px", background: c.bg, border: `1px solid ${c.border}`, fontSize: "0.6rem", fontWeight: 700, color: c.color, letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0 }}>
+                  {c.label}
+                </span>
+              </div>
+              <span style={{ fontSize: "0.6875rem", color: "var(--fg3)", lineHeight: 1.4 }}>{sig.detail}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Impact Projection ────────────────────────────────────────────────────────
+
+function ImpactProjection({ result, snapshot, computed }: { result: AnalysisResult; snapshot: CampaignSnapshot; computed: ComputedFields }) {
+  const { metrics } = snapshot;
+  if (metrics.spend === 0 || metrics.cpm === 0) return null;
+
+  const bottleneck = result.primaryBottleneck;
+
+  // Base calculation
+  const currentCpc = computed.cpc > 0 ? computed.cpc : (metrics.cpm / ((metrics.ctr || 0.01) * 10));
+  const currentClicks = metrics.spend / currentCpc;
+  const currentOrders = currentClicks * (metrics.conversionRate / 100);
+  const currentRevenue = currentOrders * metrics.aov;
+
+  // Scenarios based on bottleneck
+  const scenarios: Array<{ label: string; description: string; newRoas: number }> = [];
+
+  if (bottleneck === "Creative") {
+    [10, 20].forEach((pct) => {
+      const newCtr = metrics.ctr * (1 + pct / 100);
+      const newCpc = metrics.cpm / (newCtr * 10);
+      const newClicks = metrics.spend / newCpc;
+      const newRev = newClicks * (metrics.conversionRate / 100) * metrics.aov;
+      scenarios.push({ label: `CTR +${pct}%`, description: `CTR ${metrics.ctr}% → ${newCtr.toFixed(2)}%, CVR held`, newRoas: metrics.spend > 0 ? newRev / metrics.spend : 0 });
+    });
+  } else if (bottleneck === "Conversion") {
+    [10, 25].forEach((pct) => {
+      const newCvr = metrics.conversionRate * (1 + pct / 100);
+      const newRev = currentClicks * (newCvr / 100) * metrics.aov;
+      scenarios.push({ label: `CVR +${pct}%`, description: `CVR ${metrics.conversionRate}% → ${newCvr.toFixed(2)}%, traffic held`, newRoas: metrics.spend > 0 ? newRev / metrics.spend : 0 });
+    });
+  } else if (bottleneck === "Efficiency") {
+    const cacImprove = [15, 30];
+    cacImprove.forEach((pct) => {
+      const newCvr = metrics.conversionRate * (1 + pct / 200);
+      const newAov = metrics.aov * (1 + pct / 300);
+      const newRev = currentClicks * (newCvr / 100) * newAov;
+      scenarios.push({ label: `Efficiency +${pct}%`, description: `Blended CVR + AOV improvement`, newRoas: metrics.spend > 0 ? newRev / metrics.spend : 0 });
+    });
+  } else {
+    [10, 20].forEach((pct) => {
+      const newRev = currentRevenue * (1 + pct / 100);
+      scenarios.push({ label: `Revenue +${pct}%`, description: `Maintained efficiency at scale`, newRoas: metrics.spend > 0 ? newRev / metrics.spend : 0 });
+    });
+  }
+
+  const currentRoas = computed.roas;
+
+  return (
+    <div style={{ marginTop: "0.5rem", padding: "1rem 1.125rem", background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.12)", borderRadius: "12px" }}>
+      <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--fg3)", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 0.25rem" }}>
+        Impact Projection
+      </p>
+      <p style={{ fontSize: "0.6875rem", color: "var(--fg4)", margin: "0 0 0.875rem" }}>
+        Projected ROAS if {bottleneck.toLowerCase()} bottleneck is resolved
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${scenarios.length}, 1fr)`, gap: "0.625rem" }}>
+        {scenarios.map((s) => {
+          const delta = s.newRoas - currentRoas;
+          const isPositive = delta > 0;
+          return (
+            <div key={s.label} style={{ padding: "0.75rem", background: "var(--surface-b)", border: "1px solid var(--border-2)", borderRadius: "10px" }}>
+              <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "#a78bfa", margin: "0 0 0.375rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>{s.label}</p>
+              <p style={{ fontSize: "1.125rem", fontWeight: 700, color: isPositive ? "#34d399" : "#f87171", margin: "0 0 0.25rem", lineHeight: 1 }}>
+                {s.newRoas.toFixed(2)}x
+              </p>
+              <p style={{ fontSize: "0.6875rem", color: isPositive ? "#34d399" : "#f87171", margin: "0 0 0.375rem", fontWeight: 500 }}>
+                {isPositive ? "+" : ""}{delta.toFixed(2)}x vs current
+              </p>
+              <p style={{ fontSize: "0.6875rem", color: "var(--fg4)", margin: 0, lineHeight: 1.4 }}>{s.description}</p>
+            </div>
+          );
+        })}
+      </div>
+      <p style={{ fontSize: "0.6875rem", color: "var(--fg4)", margin: "0.625rem 0 0", fontStyle: "italic" }}>
+        Current ROAS: {currentRoas.toFixed(2)}x · Projections assume all other variables held constant.
+      </p>
+    </div>
+  );
 }

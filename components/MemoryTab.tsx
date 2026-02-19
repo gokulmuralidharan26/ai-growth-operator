@@ -1,8 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Brain, Trophy, GitCompare, Loader2, ChevronDown, ChevronUp } from "lucide-react";
-import type { SimilarCase, AnalysisResult } from "@/lib/schema";
+import { Brain, Trophy, GitCompare, Loader2, ChevronDown, ChevronUp, CheckCircle2, BookOpen } from "lucide-react";
+import type { SimilarCase, AnalysisResult, HistoryItem } from "@/lib/schema";
+import { loadHistory } from "@/lib/utils";
+
+// ─── Run meta stored in localStorage ─────────────────────────────────────────
+
+interface RunMeta {
+  notes: string;
+  resolved: boolean;
+}
+
+function loadRunMeta(): Record<string, RunMeta> {
+  try { return JSON.parse(localStorage.getItem("ago_run_meta") ?? "{}"); } catch { return {}; }
+}
+
+function saveRunMeta(meta: Record<string, RunMeta>) {
+  localStorage.setItem("ago_run_meta", JSON.stringify(meta));
+}
 
 interface MemoryTabProps {
   runId: string | null;
@@ -256,6 +272,9 @@ export function MemoryTab({ runId, currentResult }: MemoryTabProps) {
         </div>
       </div>
 
+      {/* Run History */}
+      <RunHistory />
+
       {/* Top Winning Experiments */}
       {topWins.length > 0 && (
         <div>
@@ -308,6 +327,144 @@ export function MemoryTab({ runId, currentResult }: MemoryTabProps) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Run History ──────────────────────────────────────────────────────────────
+
+function RunHistory() {
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [runMeta, setRunMeta] = useState<Record<string, RunMeta>>({});
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHistory(loadHistory());
+    setRunMeta(loadRunMeta());
+  }, []);
+
+  function handleNotesChange(id: string, notes: string) {
+    const next = { ...runMeta, [id]: { ...runMeta[id], notes, resolved: runMeta[id]?.resolved ?? false } };
+    setRunMeta(next);
+    saveRunMeta(next);
+  }
+
+  function handleResolve(id: string) {
+    const next = { ...runMeta, [id]: { notes: runMeta[id]?.notes ?? "", resolved: !(runMeta[id]?.resolved) } };
+    setRunMeta(next);
+    saveRunMeta(next);
+  }
+
+  if (history.length === 0) return null;
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.875rem" }}>
+        <BookOpen size={14} color="#a78bfa" />
+        <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--fg3)", letterSpacing: "0.08em", textTransform: "uppercase", margin: 0 }}>
+          Run History
+        </p>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+        {history.map((item) => {
+          const meta = runMeta[item.id] ?? { notes: "", resolved: false };
+          const color = BOTTLENECK_COLORS[item.result?.primaryBottleneck ?? ""] ?? "#a78bfa";
+          const isEditing = editingNotes === item.id;
+
+          return (
+            <div
+              key={item.id}
+              className="fade-in-up"
+              style={{
+                background: meta.resolved ? "rgba(52,211,153,0.04)" : "var(--surface-b)",
+                border: `1px solid ${meta.resolved ? "rgba(52,211,153,0.15)" : "var(--border-2)"}`,
+                borderRadius: "12px",
+                padding: "0.875rem 1rem",
+              }}
+            >
+              {/* Run header */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.5rem" }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--fg1)", margin: 0 }}>
+                      {item.snapshot.brandName}
+                    </p>
+                    {meta.resolved && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "0.2rem", padding: "0.1rem 0.4rem", borderRadius: "9999px", background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.25)", fontSize: "0.6rem", fontWeight: 700, color: "#34d399", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        <CheckCircle2 size={9} /> Resolved
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: "0.6875rem", color: "var(--fg3)", margin: "0.1rem 0 0" }}>
+                    {item.snapshot.industry} · {item.snapshot.timeWindow} ·{" "}
+                    <span style={{ color, fontWeight: 500 }}>{item.result?.primaryBottleneck}</span>
+                    {item.result?.confidence != null && (
+                      <span> · {Math.round(item.result.confidence * 100)}% confidence</span>
+                    )}
+                  </p>
+                </div>
+                <p style={{ fontSize: "0.6875rem", color: "var(--fg4)", margin: 0, flexShrink: 0 }}>
+                  {new Date(item.timestamp).toLocaleDateString()}
+                </p>
+              </div>
+
+              {/* Outcome notes */}
+              {isEditing ? (
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <textarea
+                    autoFocus
+                    className="input-field"
+                    style={{ minHeight: "64px", fontSize: "0.8125rem", resize: "vertical" }}
+                    placeholder="Post-execution outcome notes…"
+                    value={meta.notes}
+                    onChange={(e) => handleNotesChange(item.id, e.target.value)}
+                    onBlur={() => setEditingNotes(null)}
+                  />
+                </div>
+              ) : meta.notes ? (
+                <p
+                  onClick={() => setEditingNotes(item.id)}
+                  style={{ fontSize: "0.8125rem", color: "var(--fg2)", margin: "0 0 0.5rem", lineHeight: 1.55, cursor: "text", padding: "0.375rem 0" }}
+                >
+                  {meta.notes}
+                </p>
+              ) : (
+                <button
+                  onClick={() => setEditingNotes(item.id)}
+                  style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "0.6875rem", color: "var(--fg4)", padding: "0.25rem 0", marginBottom: "0.25rem", display: "block" }}
+                >
+                  + Add outcome notes
+                </button>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={() => handleResolve(item.id)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.25rem",
+                    background: "transparent",
+                    border: `1px solid ${meta.resolved ? "rgba(52,211,153,0.25)" : "var(--border-2)"}`,
+                    borderRadius: "6px",
+                    padding: "0.2rem 0.5rem",
+                    cursor: "pointer",
+                    fontSize: "0.6875rem",
+                    fontWeight: 500,
+                    color: meta.resolved ? "#34d399" : "var(--fg3)",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <CheckCircle2 size={11} />
+                  {meta.resolved ? "Unmark" : "Mark as Resolved"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

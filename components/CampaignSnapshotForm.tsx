@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronDown, Zap, RotateCcw, TrendingUp, FlaskConical } 
 import type { CampaignSnapshot, ComputedFields } from "@/lib/schema";
 import { computeFields, channelMixWarning, formatMultiplier, formatCurrency } from "@/lib/utils";
 import { SCENARIOS } from "@/lib/scenarios";
+import { BenchmarkContext } from "./BenchmarkContext";
 
 const DEFAULT_SNAPSHOT: CampaignSnapshot = {
   brandName: "",
@@ -122,25 +123,21 @@ export function CampaignSnapshotForm({
         overflow: "hidden",
       }}
     >
-      {/* Sim mode banner */}
+      {/* Sim mode indicator */}
       {simulationMode && (
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: "0.5rem",
-            padding: "0.5rem 1.375rem",
-            background: "rgba(245,158,11,0.07)",
-            borderBottom: "1px solid rgba(245,158,11,0.18)",
-            animation: "fadeInUp 0.2s ease-out",
+            padding: "0.4rem 1.375rem",
+            background: "rgba(245,158,11,0.06)",
+            borderBottom: "1px solid rgba(245,158,11,0.15)",
           }}
         >
-          <FlaskConical size={12} color="#f59e0b" />
-          <span style={{ fontSize: "0.6875rem", color: "#f59e0b", fontWeight: 600 }}>
-            Simulation Mode – Demo Data
-          </span>
-          <span style={{ fontSize: "0.6875rem", color: "rgba(245,158,11,0.6)", marginLeft: "0.25rem" }}>
-            · Use scenarios for testing and training
+          <FlaskConical size={11} color="#f59e0b" />
+          <span style={{ fontSize: "0.6875rem", color: "#f59e0b", fontWeight: 600, letterSpacing: "0.04em" }}>
+            Simulation Mode Active
           </span>
         </div>
       )}
@@ -181,9 +178,7 @@ export function CampaignSnapshotForm({
           </h2>
         </div>
         <p style={{ fontSize: "0.75rem", color: "var(--fg4)", margin: "0.375rem 0 0", lineHeight: 1.5 }}>
-          {simulationMode
-            ? "Load a demo scenario or enter custom values to test the system"
-            : "Enter your live campaign metrics for AI-powered diagnosis"}
+          Enter performance metrics to generate structured diagnosis and execution plan.
         </p>
       </div>
 
@@ -425,6 +420,9 @@ export function CampaignSnapshotForm({
           </div>
         </div>
 
+        {/* Benchmark Context */}
+        <BenchmarkContext snapshot={snapshot} computed={computed} />
+
         <hr className="section-divider" />
 
         {/* Trends */}
@@ -509,7 +507,7 @@ export function CampaignSnapshotForm({
           ) : (
             <>
               <Zap size={16} />
-              {simulationMode ? "Run Simulation" : "Analyze Performance"}
+              Generate Analysis
             </>
           )}
         </button>
