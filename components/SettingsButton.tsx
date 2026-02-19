@@ -124,7 +124,7 @@ export function SettingsButton() {
           >
             AI Growth Operator
             <br />
-            <span style={{ color: "var(--fg4)" }}>Omnia1 Growth OS v1.0</span>
+            <span style={{ color: "var(--fg4)" }}>AI Growth Operator v2.0</span>
           </p>
         </div>
       )}

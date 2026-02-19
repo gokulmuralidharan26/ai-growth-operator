@@ -1,5 +1,5 @@
 # AI Growth Operator
-### Omnia1 Growth OS v2 — Experiment Intelligence Layer
+### AI Growth Operator v2 — Experiment Intelligence Layer
 
 A production-quality AI-powered performance marketing OS for beauty, wellness, and fashion DTC brands. Diagnoses campaign issues, generates action plans, runs experiments, tracks outcomes, and surfaces pattern intelligence from historical runs.
 

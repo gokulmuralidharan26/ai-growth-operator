@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Growth Operator | Omnia1 Growth OS",
+  title: "AI Growth Operator",
   description:
     "Performance diagnosis and experiment planning assistant for beauty, wellness, and fashion DTC brands.",
 };

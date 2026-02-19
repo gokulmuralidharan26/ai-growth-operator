@@ -207,7 +207,7 @@ export function Header({
                 textOverflow: "ellipsis",
               }}
             >
-              Omnia1 Growth OS · Structured Performance Reasoning Engine
+              AI Growth Operator · Structured Performance Reasoning Engine
             </p>
           </div>
         </div>
