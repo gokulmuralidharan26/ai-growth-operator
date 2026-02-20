@@ -1,5 +1,8 @@
 {
   "setup-worktree": [
-    "npm install"
+    "MAIN=$(git worktree list 2>/dev/null | head -1 | awk '{print $1}') && cp \"$MAIN/.env.local\" .env.local 2>/dev/null || true",
+    "MAIN=$(git worktree list 2>/dev/null | head -1 | awk '{print $1}') && cp \"$MAIN/.env\" .env 2>/dev/null || true",
+    "npm install",
+    "npx prisma migrate dev --name init 2>/dev/null || npx prisma generate 2>/dev/null || true"
   ]
 }
